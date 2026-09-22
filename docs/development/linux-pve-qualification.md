@@ -100,3 +100,42 @@ Guest boot, cleanup, and `KILN_DEV_BASE_READY` were not reached. A later
 attempt has to restore Stage 2 again. It cannot continue this journal, and it
 has to account for the uploaded file that now uses the first attempt's staging
 ID.
+
+## Third attempt
+
+Generic startup recovery now leaves the exact template and clone resources of
+an ACTIVE Linux import run in `PROVISIONING`. A resource is deferred only when
+its installation, active plan IDs, type, VMID, node, pool, creator, profile,
+provider, and provenance all match that run. Lookalikes and resources from a
+run that is no longer ACTIVE still become `ERROR`. With a disposable database,
+`npm test -- --maxWorkers=2` passed 295 tests, and `npm run build` passed.
+
+The Stage 2 dump was restored again. All 23 historical checksums matched
+before and after migration. VMIDs 9104 and 9105 were absent on the nested host
+and unreserved in that database. A new staging idempotency key produced
+`lstg_dda48af8a6411043f4d8f491d53d9b28`. All 25 external hashes matched the
+earlier record. Both previous unknown databases were left in place.
+
+Run `limp_0c07c334ac1748bfaa9ed657d01d117b` submitted one `imgcopy`. The API
+was stopped while that phase was still `SUBMITTED`. After restart both import
+resources were still `PROVISIONING`, the same task ID was kept, and there was
+still one `linux_import.phase_submitted` event for `UPLOAD`. Recovery then
+completed that phase. Import, template conversion, clone, stamp, start, and
+stop each submitted once and completed. The template and clone each had one
+8 GiB SCSI disk, SeaBIOS, no NIC, and the ownership tags from the run. Both
+VM configs are now absent, both resources are `DESTROYED`, the staging
+allocation is `RETAINED`, and the run is `COMPLETED`.
+
+The first serial client did not stay attached, so the original boot console
+was not captured. After one reboot of the already started clone, the serial
+log contained `KILN_DEV_BASE_READY` once. Kiln then stopped the clone and
+destroyed both VMs. Proxmox omits `/vms/<id>` from the permission map after
+that guest is gone, so destroy reconciliation also accepts `VM.Allocate` on
+the owned pool. The provider suite passed after that change.
+
+The new upload remains at
+`local:import/lstg_dda48af8a6411043f4d8f491d53d9b28.qcow2`, beside the retained
+BIOS image and the second attempt's upload. All 25 hashes still matched. The
+temporary token was removed and then rejected with HTTP 401. Private logs and
+the database dump are under
+`/home/daly/.local/state/kiln/kiln26-r3-dd4232`.
