@@ -1,0 +1,9 @@
+[Unit]
+Description=Disable the Kiln outer lab router LAN after a firewall failure
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/sysctl -w net.ipv4.ip_forward=0
+ExecStart=-/usr/sbin/ip link set lan0 down
+ExecStart=-/usr/sbin/ip address flush dev lan0

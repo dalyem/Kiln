@@ -1,0 +1,19 @@
+# Target Phase 3+ project specification; Phase 1 does not execute this file.
+version: 1
+runtime: node
+development:
+  command: pnpm dev
+  port: 3000
+verification:
+  quick:
+    - pnpm lint
+    - pnpm typecheck
+  premerge:
+    - pnpm lint
+    - pnpm typecheck
+    - pnpm test
+    - pnpm build
+browser:
+  enabled: true
+desktop:
+  enabled: false

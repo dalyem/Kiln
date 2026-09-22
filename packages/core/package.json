@@ -1,0 +1,10 @@
+{
+  "name": "@kiln/core",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@peculiar/x509": "^2.1.0",
+    "reflect-metadata": "^0.2.2"
+  }
+}

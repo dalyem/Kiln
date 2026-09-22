@@ -1,0 +1,34 @@
+#cloud-config
+hostname: $HOSTNAME
+manage_etc_hosts: true
+ssh_pwauth: false
+disable_root: false
+users:
+  - name: root
+    ssh_authorized_keys:
+      - $PUBLIC_KEY
+package_update: true
+package_upgrade: false
+packages:
+  - dnsmasq
+  - nftables
+  - qemu-guest-agent
+  - openssh-server
+write_files:
+$WRITE_FILES
+bootcmd:
+  - [sysctl, -w, net.ipv6.conf.all.disable_ipv6=1]
+  - [sysctl, -w, net.ipv6.conf.default.disable_ipv6=1]
+  - [sysctl, -w, net.ipv6.conf.lo.disable_ipv6=1]
+runcmd:
+  - [systemctl, mask, --now, nftables.service]
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, kiln-nested-firewall.service]
+  - [systemctl, start, kiln-nested-firewall.service]
+  - [systemctl, enable, kiln-nested-lan.service]
+  - [systemctl, start, kiln-nested-lan.service]
+  - [systemctl, enable, dnsmasq.service]
+  - [systemctl, restart, dnsmasq.service]
+  - [systemctl, enable, qemu-guest-agent.service]
+  - [systemctl, restart, qemu-guest-agent.service]
+  - [systemctl, restart, ssh.service]

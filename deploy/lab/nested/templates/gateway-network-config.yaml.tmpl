@@ -1,0 +1,23 @@
+version: 2
+ethernets:
+  wan0:
+    match:
+      macaddress: "$WAN_MAC"
+    set-name: wan0
+    addresses: [10.250.103.30/24]
+    routes:
+      - to: default
+        via: 10.250.103.1
+    nameservers:
+      addresses: [1.1.1.1, 9.9.9.9]
+    dhcp4: false
+    dhcp6: false
+    link-local: []
+  trunk0:
+    match:
+      macaddress: "$TRUNK_MAC"
+    set-name: trunk0
+    optional: true
+    dhcp4: false
+    dhcp6: false
+    link-local: []

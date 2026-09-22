@@ -1,0 +1,21 @@
+[Unit]
+Description=Nested lab tagged lease interfaces
+Requires=kiln-nested-firewall.service
+BindsTo=kiln-nested-firewall.service
+Wants=network-online.target
+After=kiln-nested-firewall.service network-online.target
+OnFailure=kiln-nested-fail-closed.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/ip link add link $TRUNK name $LEASE_A_INTERFACE type vlan id $LEASE_A_VLAN
+ExecStart=/usr/sbin/ip address replace $LEASE_A_ADDRESS dev $LEASE_A_INTERFACE
+ExecStart=/usr/sbin/ip link set dev $LEASE_A_INTERFACE up
+ExecStart=/usr/sbin/ip link add link $TRUNK name $LEASE_B_INTERFACE type vlan id $LEASE_B_VLAN
+ExecStart=/usr/sbin/ip address replace $LEASE_B_ADDRESS dev $LEASE_B_INTERFACE
+ExecStart=/usr/sbin/ip link set dev $LEASE_B_INTERFACE up
+ExecStop=/usr/local/sbin/kiln-nested-fail-closed
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

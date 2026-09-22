@@ -1,0 +1,16 @@
+[Unit]
+Description=Kiln outer lab router LAN address
+Requires=kiln-router-firewall.service
+BindsTo=kiln-router-firewall.service
+After=kiln-router-firewall.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/ip address replace $LAN_IP/$LAN_PREFIX dev lan0
+ExecStart=/usr/sbin/ip link set lan0 up
+ExecStop=-/usr/sbin/ip link set lan0 down
+ExecStop=-/usr/sbin/ip address flush dev lan0
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

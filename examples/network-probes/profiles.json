@@ -1,0 +1,31 @@
+[
+  {
+    "id": "controlled-smoke",
+    "ttlSeconds": 120,
+    "checks": [
+      {
+        "id": "package-dns",
+        "kind": "dns",
+        "hostname": "packages.example.test",
+        "resolverAddress": "192.0.2.53",
+        "resolverPort": 53,
+        "timeoutMs": 500
+      },
+      {
+        "id": "approved-https",
+        "kind": "https",
+        "url": "https://status.example.test/health",
+        "expectedStatus": 200,
+        "timeoutMs": 1000
+      },
+      {
+        "id": "management-blocked",
+        "kind": "tcp",
+        "address": "192.0.2.10",
+        "port": 8006,
+        "expect": "blocked",
+        "timeoutMs": 500
+      }
+    ]
+  }
+]

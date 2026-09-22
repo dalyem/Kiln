@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS installations (id text PRIMARY KEY, created_at timestamptz NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS installations_singleton ON installations ((true));
+CREATE TABLE IF NOT EXISTS resources (id text PRIMARY KEY, installation_id text NOT NULL REFERENCES installations(id), project_id text NOT NULL, type text NOT NULL CHECK (type IN ('development', 'execution', 'browser', 'image_template')), ownership text NOT NULL CHECK (ownership IN ('KILN_MANAGED', 'IMPORTED', 'EXTERNAL')), state text NOT NULL CHECK (state IN ('REQUESTED', 'PROVISIONING', 'READY', 'STOPPING', 'STOPPED', 'DESTROYING', 'DESTROYED', 'ERROR', 'LOST', 'QUARANTINED')), provider_id text NOT NULL, provider_resource_id text NOT NULL, provider_kind text NOT NULL, node text, pool text NOT NULL, created_by text NOT NULL, created_at timestamptz NOT NULL, expires_at timestamptz, profile text, provenance_required integer NOT NULL DEFAULT 0);
+ALTER TABLE resources ADD COLUMN IF NOT EXISTS provider_kind text;
+UPDATE resources SET provider_kind = 'unknown' WHERE provider_kind IS NULL;
+ALTER TABLE resources ALTER COLUMN provider_kind SET NOT NULL;
+DROP INDEX IF EXISTS resources_provider_identity;
+CREATE UNIQUE INDEX IF NOT EXISTS resources_provider_identity_kind ON resources(provider_id, provider_resource_id, provider_kind);
+CREATE TABLE IF NOT EXISTS idempotency (key text PRIMARY KEY, payload text NOT NULL, resource_id text NOT NULL REFERENCES resources(id));
+CREATE TABLE IF NOT EXISTS events (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, installation_id text NOT NULL, project_id text, resource_id text, type text NOT NULL, timestamp timestamptz NOT NULL, payload jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS operations (id text PRIMARY KEY, resource_id text NOT NULL REFERENCES resources(id), kind text NOT NULL CHECK (kind IN ('create', 'start', 'stop', 'destroy')), status text NOT NULL CHECK (status IN ('INTENT', 'COMPLETED', 'UNKNOWN')), created_at timestamptz NOT NULL, completed_at timestamptz);
+CREATE TABLE IF NOT EXISTS leases (resource_id text PRIMARY KEY REFERENCES resources(id), expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL, updated_at timestamptz NOT NULL);

@@ -1,0 +1,13 @@
+# Guarded Linux image import
+
+KILN-25 implements a guarded Linux development image import. The server enables it only when an administrator supplies the separate Linux profile, private staging directory, PostgreSQL, the Proxmox read-only provider mode and the distinct Linux import credential. KILN-26 exercises this exact implementation against the nested Proxmox environment.
+
+The server accepts a Linux QCOW2 only through a private staging directory. The client supplies an opaque staging ID after upload. It never supplies a server path. The server limits one file to 2 GiB, writes it with `O_NOFOLLOW`, checks the byte count and digest, and publishes the completed file without replacing an existing path. The signed image manifest is checked from the file with the existing streamed verifier. Its `sourceBuild` field must equal the SHA-256 digest of the raw build metadata. The metadata parser requires the build profile produced by `images/dev/build.sh`.
+
+The Linux path has separate `linux_import_runs` and `linux_import_phases` tables. It does not reuse `qualification_runs`, the BIOS plan, or the BIOS QEMU parser. Each phase records an intent before a provider call and its receipt afterward. A failed dispatch or failed receipt write becomes `UNKNOWN`. The phases are upload, import, template conversion, full clone, identity stamp, start, stop, clone deletion and template deletion. PVE staging deletion is intentionally absent.
+
+The planned guest graph accepts one 8 GiB SCSI disk, SeaBIOS, `kvm64`, two cores, 2 GiB memory and no network device, cloud-init drive, EFI disk, TPM, snapshots, firewall data, HA entry or pending configuration. The Proxmox request builder uses an explicit `import-from` source and full clone. KILN-26 must prove that the imported disk name and task receipts match this graph before a live import is allowed.
+
+The import profile must name a completed historical BIOS qualification run and its retained pool allocation. Before every dispatch and completion, Kiln verifies the installation ID, run ID, pool allocation receipt, nonce, comment, resources, child disks and phase records. A pool with the right name or tag alone is never enough. The normal API token cannot start this path. The server requires an explicit Linux import profile and a separate operator credential.
+
+Kiln retains local staging artifacts. It does not delete a Proxmox upload, disk, VM or claimed local artifact in this qualification path. Interrupted uploads retain their private reservation for investigation. The staging service limits uploads to 4 GiB across eight files and applies a 20 minute upload deadline.

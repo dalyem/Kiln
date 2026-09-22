@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package kiln.v1;
+
+option go_package = "github.com/kiln-dev/kiln/proto/kilnv1";
+
+// This protocol is a future boundary. Phase 1 does not start a gRPC server or
+// accept workload enrollment. Workloads initiate every connection to Kiln Core.
+service WorkloadControl {
+  // Enrollment requires a short-lived, single-use bootstrap credential and a
+  // client certificate bound to the resulting workload identity.
+  rpc Enroll(EnrollmentRequest) returns (EnrollmentResponse);
+
+  // The workload opens this mTLS-authenticated stream to receive commands and
+  // send heartbeats. Core never connects directly to workload daemon ports.
+  rpc Connect(stream WorkloadMessage) returns (stream ControlMessage);
+}
+
+message EnrollmentRequest {
+  string installation_id = 1;
+  string resource_id = 2;
+  string bootstrap_token = 3;
+  string public_key_pem = 4;
+}
+
+message EnrollmentResponse {
+  string workload_identity = 1;
+  string certificate_pem = 2;
+  string certificate_authority_pem = 3;
+  string control_endpoint = 4;
+}
+
+message WorkloadMessage {
+  string resource_id = 1;
+  oneof payload {
+    Heartbeat heartbeat = 2;
+    CommandResult command_result = 3;
+  }
+}
+
+message ControlMessage {
+  string resource_id = 1;
+  oneof payload {
+    Command command = 2;
+    Shutdown shutdown = 3;
+  }
+}
+
+message Heartbeat {
+  int64 observed_at_unix_ms = 1;
+}
+
+message Command {
+  string operation_id = 1;
+  string kind = 2;
+  bytes payload = 3;
+}
+
+message CommandResult {
+  string operation_id = 1;
+  string status = 2;
+  bytes payload = 3;
+}
+
+message Shutdown {
+  string reason = 1;
+}

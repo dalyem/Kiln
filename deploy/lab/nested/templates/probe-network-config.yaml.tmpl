@@ -1,0 +1,9 @@
+version: 2
+ethernets:
+  eth0:
+    match:
+      macaddress: "$MAC"
+    set-name: eth0
+    dhcp4: true
+    dhcp6: false
+    link-local: []

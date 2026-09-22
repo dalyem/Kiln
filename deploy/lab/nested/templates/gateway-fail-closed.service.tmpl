@@ -1,0 +1,7 @@
+[Unit]
+Description=Disable nested lease interfaces after a firewall failure
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kiln-nested-fail-closed

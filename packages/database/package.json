@@ -1,0 +1,14 @@
+{
+  "name": "@kiln/database",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@kiln/core": "*",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.14.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.11"
+  }
+}

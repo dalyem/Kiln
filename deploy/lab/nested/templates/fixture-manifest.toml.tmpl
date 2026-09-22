@@ -1,0 +1,27 @@
+# Placement data only. This deliberately omits the SSH public key.
+[gateway]
+vmid = $GATEWAY_VMID
+hostname = "$GATEWAY_HOSTNAME"
+instance_id = "$GATEWAY_INSTANCE_ID"
+wan_mac = "$GATEWAY_WAN_MAC"
+trunk_mac = "$GATEWAY_TRUNK_MAC"
+wan_address = "$GATEWAY_WAN"
+wan_gateway = "$GATEWAY_DEFAULT"
+pve_trunk_native_vlan = 4094
+trunk_vlans = [210, 211]
+
+[probe_a]
+vmid = $PROBE_A_VMID
+hostname = "$PROBE_A_HOSTNAME"
+instance_id = "$PROBE_A_INSTANCE_ID"
+mac = "$PROBE_A_MAC"
+pve_access_vlan = 210
+reserved_address = "10.242.0.2"
+
+[probe_b]
+vmid = $PROBE_B_VMID
+hostname = "$PROBE_B_HOSTNAME"
+instance_id = "$PROBE_B_INSTANCE_ID"
+mac = "$PROBE_B_MAC"
+pve_access_vlan = 211
+reserved_address = "10.242.0.18"

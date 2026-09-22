@@ -1,0 +1,27 @@
+{
+  "name": "kiln",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run typecheck && npm run build --workspaces --if-present",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "dev": "npm --workspace @kiln/api run dev",
+    "format": "prettier --write package.json tsconfig.json apps/api packages/core packages/database packages/api-schema packages/auth packages/events packages/providers packages/proxmox tests"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "prettier": "3.5.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  }
+}

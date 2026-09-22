@@ -1,0 +1,67 @@
+destroy table inet kiln_nested
+
+table inet kiln_nested {
+  set public_dns {
+    type ipv4_addr
+    elements = { $UPSTREAM_DNS }
+  }
+
+  set protected_ipv4 {
+    type ipv4_addr
+    flags interval
+    elements = { $PROTECTED_IPV4 }
+  }
+
+  chain input {
+    type filter hook input priority filter; policy drop;
+    iifname "lo" accept
+    iifname "wan0" ip saddr $FIXTURE_SSH_SOURCE tcp dport 22 accept
+    iifname "lease210" ip saddr { 0.0.0.0, $LEASE_A_CLIENT } udp sport 68 udp dport 67 accept
+    iifname "lease210" ip saddr != $LEASE_A_CLIENT counter drop
+    iifname "lease210" ip saddr $LEASE_A_CLIENT udp dport 53 accept
+    iifname "lease210" ip saddr $LEASE_A_CLIENT tcp dport 53 accept
+    iifname "lease211" ip saddr { 0.0.0.0, $LEASE_B_CLIENT } udp sport 68 udp dport 67 accept
+    iifname "lease211" ip saddr != $LEASE_B_CLIENT counter drop
+    iifname "lease211" ip saddr $LEASE_B_CLIENT udp dport 53 accept
+    iifname "lease211" ip saddr $LEASE_B_CLIENT tcp dport 53 accept
+    iifname "wan0" ct state established,related accept
+  }
+
+  chain forward {
+    type filter hook forward priority filter; policy drop;
+    iifname "lease210" ip saddr != $LEASE_A_CLIENT drop
+    iifname "lease211" ip saddr != $LEASE_B_CLIENT drop
+    iifname "lease210" oifname "lease211" drop
+    iifname "lease211" oifname "lease210" drop
+    iifname "wan0" oifname "lease210" ip daddr $LEASE_A_CLIENT ct state established,related accept
+    iifname "wan0" oifname "lease211" ip daddr $LEASE_B_CLIENT ct state established,related accept
+    ip daddr @protected_ipv4 drop
+    iifname "lease210" oifname "wan0" ip saddr $LEASE_A_CLIENT ip daddr @public_dns udp dport 53 accept
+    iifname "lease210" oifname "wan0" ip saddr $LEASE_A_CLIENT ip daddr @public_dns tcp dport 53 accept
+    iifname "lease210" oifname "wan0" ip saddr $LEASE_A_CLIENT tcp dport { 80, 443 } accept
+    iifname "lease211" oifname "wan0" ip saddr $LEASE_B_CLIENT ip daddr @public_dns udp dport 53 accept
+    iifname "lease211" oifname "wan0" ip saddr $LEASE_B_CLIENT ip daddr @public_dns tcp dport 53 accept
+    iifname "lease211" oifname "wan0" ip saddr $LEASE_B_CLIENT tcp dport { 80, 443 } accept
+  }
+
+  chain output {
+    type filter hook output priority filter; policy drop;
+    oifname "lo" accept
+    oifname "wan0" ip daddr $FIXTURE_SSH_SOURCE tcp sport 22 accept
+    oifname "lease210" ip daddr { 255.255.255.255, $LEASE_A_CLIENT } udp sport 67 udp dport 68 counter accept
+    oifname "lease210" ip daddr $LEASE_A_CLIENT udp sport 53 accept
+    oifname "lease210" ip daddr $LEASE_A_CLIENT tcp sport 53 accept
+    oifname "lease211" ip daddr { 255.255.255.255, $LEASE_B_CLIENT } udp sport 67 udp dport 68 counter accept
+    oifname "lease211" ip daddr $LEASE_B_CLIENT udp sport 53 accept
+    oifname "lease211" ip daddr $LEASE_B_CLIENT tcp sport 53 accept
+    ip daddr @protected_ipv4 drop
+    oifname "wan0" ip daddr @public_dns udp dport 53 accept
+    oifname "wan0" ip daddr @public_dns tcp dport 53 accept
+    oifname "wan0" tcp dport { 80, 443 } accept
+  }
+
+  chain postrouting {
+    type nat hook postrouting priority srcnat; policy accept;
+    oifname "wan0" ip saddr { $LEASE_A_CLIENT, $LEASE_B_CLIENT } masquerade
+  }
+}

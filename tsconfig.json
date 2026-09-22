@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
+    "allowUnreachableCode": false,
+    "noEmit": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "apps/api/**/*.ts",
+    "packages/core/**/*.ts",
+    "packages/database/**/*.ts",
+    "packages/api-schema/**/*.ts",
+    "packages/auth/**/*.ts",
+    "packages/events/**/*.ts",
+    "packages/providers/**/*.ts",
+    "packages/proxmox/**/*.ts",
+    "tests/**/*.ts"
+  ]
+}

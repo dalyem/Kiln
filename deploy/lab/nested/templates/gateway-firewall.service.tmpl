@@ -1,0 +1,17 @@
+[Unit]
+Description=Nested lab firewall
+DefaultDependencies=no
+Wants=network-pre.target systemd-sysctl.service
+Before=network-pre.target
+After=local-fs.target systemd-sysctl.service
+OnFailure=kiln-nested-fail-closed.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kiln-nested-load-firewall
+ExecStartPost=/usr/sbin/sysctl -w net.ipv4.ip_forward=1
+ExecStop=/usr/local/sbin/kiln-nested-fail-closed
+RemainAfterExit=yes
+
+[Install]
+WantedBy=network-pre.target

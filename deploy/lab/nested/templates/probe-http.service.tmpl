@@ -1,0 +1,12 @@
+[Unit]
+Description=Nested probe HTTP service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=$HTTP_COMMAND
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

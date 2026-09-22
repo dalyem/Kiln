@@ -1,0 +1,2497 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Kiln Phase 1 API",
+    "version": "0.1.0",
+    "description": "Contributor contract: fake lifecycle and read-only discovery, plus a separately enabled, administrator-only Proxmox lifecycle qualification. General live provisioning and gateway repair remain disabled."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:4000"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "summary": "Public minimal health check",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Healthy"
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "summary": "Public store-readiness check",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The store can read the installation identity"
+          },
+          "503": {
+            "description": "The store is not ready"
+          }
+        }
+      }
+    },
+    "/v1/doctor": {
+      "get": {
+        "summary": "Read-only gateway and incident diagnosis",
+        "parameters": [
+          {
+            "name": "network",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "node",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current diagnosis",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DoctorReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Credential lacks read scope"
+          }
+        }
+      }
+    },
+    "/v1/resources/{id}/operations": {
+      "get": {
+        "summary": "Read the newest 100 operations for an authorized resource",
+        "description": "Returns sanitized journal state. Pending and unknown operations block conflicting mutations. Provider task handles, ownership snapshots and raw provider errors are never returned.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "operations"
+                  ],
+                  "properties": {
+                    "operations": {
+                      "type": "array",
+                      "maxItems": 100,
+                      "items": {
+                        "$ref": "#/components/schemas/ResourceOperation"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Credential lacks read scope or resource belongs to another project"
+          },
+          "404": {
+            "description": "Resource not found"
+          }
+        }
+      }
+    },
+    "/v1/incidents": {
+      "get": {
+        "summary": "Read persisted gateway incidents",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "all"
+              ],
+              "default": "open"
+            }
+          },
+          {
+            "name": "node",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Incidents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "incidents"
+                  ],
+                  "properties": {
+                    "incidents": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GatewayIncident"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Credential lacks read scope"
+          }
+        }
+      }
+    },
+    "/v1/gateways": {
+      "get": {
+        "summary": "Read configured protected gateway records",
+        "responses": {
+          "200": {
+            "description": "Gateway records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "gateways"
+                  ],
+                  "properties": {
+                    "gateways": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GatewayRecord"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Credential lacks admin scope"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a simulated protected gateway in fake-provider mode",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "node"
+                ],
+                "properties": {
+                  "node": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created simulated gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Idempotent replay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid node or missing idempotency key"
+          },
+          "403": {
+            "description": "Infrastructure credential required"
+          },
+          "409": {
+            "description": "Conflicting idempotency key"
+          },
+          "501": {
+            "description": "Live gateway creation is unavailable"
+          }
+        }
+      }
+    },
+    "/v1/gateways/{id}/enrollment-token": {
+      "post": {
+        "summary": "Issue a single-use gateway enrollment token",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Enrollment details, including a secret bootstrap token"
+          },
+          "403": {
+            "description": "Infrastructure credential or ownership validation failed"
+          },
+          "409": {
+            "description": "Gateway already has an active identity"
+          }
+        }
+      }
+    },
+    "/v1/gateways/{id}/identity": {
+      "get": {
+        "summary": "Read redacted gateway identity and heartbeat state",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Identity summary"
+          },
+          "403": {
+            "description": "Infrastructure credential required"
+          }
+        }
+      }
+    },
+    "/v1/gateways/{id}/revoke-identity": {
+      "post": {
+        "summary": "Revoke a gateway device identity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Identity revoked"
+          },
+          "403": {
+            "description": "Infrastructure credential required"
+          }
+        }
+      }
+    },
+    "/v1/gateways/{id}/probes": {
+      "post": {
+        "summary": "Create a fake-only diagnostic network probe on an owned gateway node",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "profileId"
+                ],
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Probe creation intent accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkProbeRecord"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Idempotent replay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkProbeRecord"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Infrastructure credential or ownership validation failed"
+          },
+          "404": {
+            "description": "Gateway or fixed profile not found"
+          },
+          "501": {
+            "description": "Live probe provisioning is unavailable"
+          }
+        }
+      }
+    },
+    "/v1/network-probes/{id}": {
+      "get": {
+        "summary": "Read a redacted diagnostic probe record",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Diagnostic record with unverified placement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkProbeRecord"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Infrastructure credential required"
+          },
+          "404": {
+            "description": "Probe not found"
+          }
+        }
+      }
+    },
+    "/v1/network-probes/{id}/token": {
+      "post": {
+        "summary": "Issue or rotate a scoped probe report token",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Short-lived raw bearer token; never persisted in readable form",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "token",
+                    "expiresAt"
+                  ],
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Infrastructure credential required"
+          },
+          "409": {
+            "description": "Probe is no longer pending"
+          }
+        }
+      }
+    },
+    "/v1/probes/{id}/plan": {
+      "get": {
+        "summary": "Fetch an immutable probe plan from the enrollment HTTPS listener",
+        "description": "Served only by the configured server-authenticated TLS 1.3 enrollment listener. It uses the scoped probe bearer token, not the management API credential.",
+        "servers": [
+          {
+            "url": "https://127.0.0.1:4443"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plan and opaque plan digest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "plan",
+                    "planDigest"
+                  ],
+                  "properties": {
+                    "plan": {
+                      "$ref": "#/components/schemas/NetworkProbePlan"
+                    },
+                    "planDigest": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or expired scoped token"
+          }
+        }
+      }
+    },
+    "/v1/probes/{id}/result": {
+      "post": {
+        "summary": "Submit one bounded diagnostic result to the enrollment HTTPS listener",
+        "description": "Served only by the configured server-authenticated TLS 1.3 enrollment listener. Results are diagnostic and cannot change workload admission.",
+        "servers": [
+          {
+            "url": "https://127.0.0.1:4443"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "planDigest",
+                  "results"
+                ],
+                "properties": {
+                  "planDigest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "results": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "items": {
+                      "$ref": "#/components/schemas/NetworkProbeResult"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted result or exact replay acknowledgement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "accepted",
+                    "probeId",
+                    "resultDigest"
+                  ],
+                  "properties": {
+                    "accepted": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "probeId": {
+                      "type": "string"
+                    },
+                    "resultDigest": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Result does not exactly match the plan"
+          },
+          "401": {
+            "description": "Invalid or expired scoped token"
+          },
+          "403": {
+            "description": "Current ownership or binding failed"
+          },
+          "409": {
+            "description": "Different result or plan conflict"
+          }
+        }
+      }
+    },
+    "/v1/monitor/scan": {
+      "post": {
+        "summary": "Persist one bounded gateway-monitor scan",
+        "responses": {
+          "200": {
+            "description": "Scan completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Infrastructure credential required"
+          }
+        }
+      }
+    },
+    "/v1/doctor/repair": {
+      "post": {
+        "summary": "Reserved repair endpoint; disabled in this release",
+        "responses": {
+          "403": {
+            "description": "Infrastructure credential required"
+          },
+          "501": {
+            "description": "Repair is disabled and no provider write is made"
+          }
+        }
+      }
+    },
+    "/v1/status": {
+      "get": {
+        "summary": "Read installation, provider mode and persistence",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "installationId",
+                    "providerMode",
+                    "mutationEnabled",
+                    "monitoring",
+                    "persistence"
+                  ],
+                  "properties": {
+                    "installationId": {
+                      "type": "string"
+                    },
+                    "providerMode": {
+                      "type": "string",
+                      "enum": [
+                        "fake",
+                        "proxmox-read-only"
+                      ]
+                    },
+                    "mutationEnabled": {
+                      "type": "boolean"
+                    },
+                    "monitoring": {
+                      "type": "object",
+                      "required": [
+                        "enabled",
+                        "repairEnabled"
+                      ],
+                      "properties": {
+                        "enabled": {
+                          "const": true
+                        },
+                        "repairEnabled": {
+                          "const": false
+                        }
+                      }
+                    },
+                    "persistence": {
+                      "type": "string",
+                      "enum": [
+                        "ephemeral-memory",
+                        "postgres"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Scope, project or ownership denial"
+          },
+          "500": {
+            "description": "Sanitized internal failure"
+          }
+        }
+      }
+    },
+    "/v1/resources": {
+      "get": {
+        "summary": "List records visible to the credential",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "resources": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Resource"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Scope, project or ownership denial"
+          },
+          "500": {
+            "description": "Sanitized internal failure"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a fake resource; real provisioning is unavailable",
+        "responses": {
+          "200": {
+            "description": "Idempotent replay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Scope, project or ownership denial"
+          },
+          "500": {
+            "description": "Sanitized internal failure"
+          },
+          "201": {
+            "description": "Created fake resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting idempotency key"
+          },
+          "501": {
+            "description": "Real provisioning is unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "ttlSeconds"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "development",
+                      "execution",
+                      "browser"
+                    ]
+                  },
+                  "projectId": {
+                    "type": "string",
+                    "default": "default"
+                  },
+                  "ttlSeconds": {
+                    "type": "integer",
+                    "minimum": 60,
+                    "maximum": 86400
+                  },
+                  "profile": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "templateId": {
+                    "type": "string",
+                    "pattern": "^tmpl_[a-f0-9]{32}$",
+                    "description": "Select an eligible managed fake template for a provenance-guarded full clone."
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/resources/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Inspect a Kiln record",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Scope, project or ownership denial"
+          },
+          "500": {
+            "description": "Sanitized internal failure"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Guarded fake destruction; no real provider deletion",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Scope, project or ownership denial"
+          },
+          "500": {
+            "description": "Sanitized internal failure"
+          },
+          "501": {
+            "description": "Live provider mutation is unavailable in Phase 1"
+          }
+        }
+      }
+    },
+    "/v1/resources/{id}/stop": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Guarded fake stop",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Scope, project or ownership denial"
+          },
+          "500": {
+            "description": "Sanitized internal failure"
+          },
+          "501": {
+            "description": "Live provider mutation is unavailable in Phase 1"
+          }
+        }
+      }
+    },
+    "/v1/resources/{id}/lease": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Extend a lease, maximum 24 hours remaining",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resource"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Scope, project or ownership denial"
+          },
+          "500": {
+            "description": "Sanitized internal failure"
+          },
+          "501": {
+            "description": "Live provider mutation is unavailable in Phase 1"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "ttlSeconds"
+                ],
+                "properties": {
+                  "ttlSeconds": {
+                    "type": "integer",
+                    "minimum": 60,
+                    "maximum": 86400
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/inventory": {
+      "get": {
+        "summary": "Admin-only permission-limited provider observations",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Scope, project or ownership denial"
+          },
+          "500": {
+            "description": "Sanitized internal failure"
+          }
+        }
+      }
+    },
+    "/v1/events": {
+      "get": {
+        "summary": "Ordered project-authorized event replay",
+        "responses": {
+          "200": {
+            "description": "Ordered events and nextCursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "installationId",
+                          "type",
+                          "timestamp",
+                          "payload"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "installationId": {
+                            "type": "string"
+                          },
+                          "projectId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "resourceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "payload": {
+                            "type": "object"
+                          }
+                        }
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Scope, project or ownership denial"
+          },
+          "500": {
+            "description": "Sanitized internal failure"
+          }
+        },
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ]
+      }
+    },
+    "/v1/images/import": {
+      "post": {
+        "summary": "Verify a signed bounded fake artifact and import a simulated managed template",
+        "description": "Requires the separate infrastructure credential. Maximum decoded artifact size is 128 KiB. Signer trust comes from operator configuration; this does not import a real Proxmox image.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageImportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Idempotent replay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateImportSummary"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Simulated template import",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateImportSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or untrusted image input"
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Required scope or ownership denied"
+          },
+          "409": {
+            "description": "Conflicting or unresolved operation"
+          },
+          "501": {
+            "description": "Real provisioning remains unavailable"
+          }
+        }
+      }
+    },
+    "/v1/templates/{id}/retire": {
+      "post": {
+        "summary": "Retire an unreferenced simulated template",
+        "description": "Requires the infrastructure credential. Retirement prevents new clones; it does not delete provider disks. Live or unresolved dependencies deny retirement.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found"
+          },
+          "400": {
+            "description": "Invalid or untrusted image input"
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Required scope or ownership denied"
+          },
+          "409": {
+            "description": "Conflicting or unresolved operation"
+          },
+          "501": {
+            "description": "Real provisioning remains unavailable"
+          }
+        }
+      }
+    },
+    "/v1/resources/{id}/provenance": {
+      "get": {
+        "summary": "Read a sanitized project-scoped provenance summary",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sanitized summary, or null when no plan exists. A missing plan never grants lifecycle authority.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "provenance"
+                  ],
+                  "properties": {
+                    "provenance": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ResourceProvenance"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential"
+          },
+          "403": {
+            "description": "Required scope or ownership denied"
+          },
+          "404": {
+            "description": "Resource not found"
+          }
+        }
+      }
+    },
+    "/v1/qualifications": {
+      "post": {
+        "summary": "Create or replay the installation lifecycle qualification",
+        "security": [
+          {
+            "bearerAuth": [],
+            "qualificationToken": []
+          }
+        ],
+        "description": "Requires explicit server qualification configuration and the infrastructure identity. Unknown outcomes halt the run; repeating advance never resubmits a claimed phase. This endpoint does not enable general workload provisioning.",
+        "responses": {
+          "200": {
+            "description": "Qualification state"
+          },
+          "403": {
+            "description": "Authorization or ownership validation denied"
+          },
+          "409": {
+            "description": "Conflicting or unresolved operation"
+          },
+          "501": {
+            "description": "Qualification is not configured"
+          },
+          "201": {
+            "description": "Run, resource records and allocation intents created atomically"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "manifest",
+                  "signature",
+                  "artifactBase64"
+                ],
+                "properties": {
+                  "manifest": {
+                    "type": "object",
+                    "description": "Signed image manifest, validated against the server signer policy"
+                  },
+                  "signature": {
+                    "type": "string"
+                  },
+                  "artifactBase64": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/qualifications/{id}": {
+      "get": {
+        "summary": "Read qualification phases, deadlines and retained allocations",
+        "security": [
+          {
+            "bearerAuth": [],
+            "qualificationToken": []
+          }
+        ],
+        "description": "Requires explicit server qualification configuration and the infrastructure identity. Unknown outcomes halt the run; repeating advance never resubmits a claimed phase. This endpoint does not enable general workload provisioning.",
+        "responses": {
+          "200": {
+            "description": "Qualification state"
+          },
+          "403": {
+            "description": "Authorization or ownership validation denied"
+          },
+          "409": {
+            "description": "Conflicting or unresolved operation"
+          },
+          "501": {
+            "description": "Qualification is not configured"
+          },
+          "404": {
+            "description": "Run not found"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/qualifications/{id}/advance": {
+      "post": {
+        "summary": "Dispatch one phase or reconcile a saved receipt",
+        "security": [
+          {
+            "bearerAuth": [],
+            "qualificationToken": []
+          }
+        ],
+        "description": "Requires explicit server qualification configuration and the infrastructure identity. Unknown outcomes halt the run; repeating advance never resubmits a claimed phase. This endpoint does not enable general workload provisioning.",
+        "responses": {
+          "200": {
+            "description": "Qualification state"
+          },
+          "403": {
+            "description": "Authorization or ownership validation denied"
+          },
+          "409": {
+            "description": "Conflicting or unresolved operation"
+          },
+          "501": {
+            "description": "Qualification is not configured"
+          },
+          "404": {
+            "description": "Run not found"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/linux-import-staging": {
+      "post": {
+        "summary": "Stage a signed Linux image through the private appliance ingress",
+        "security": [{ "bearerAuth": [], "linuxImportToken": [] }],
+        "parameters": [
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1 } },
+          { "name": "X-Kiln-Artifact-SHA256", "in": "header", "required": true, "schema": { "type": "string", "pattern": "^[a-f0-9]{64}$" } },
+          { "name": "Content-Length", "in": "header", "required": true, "schema": { "type": "integer", "minimum": 1, "maximum": 2147483648 } }
+        ],
+        "requestBody": { "required": true, "content": { "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } } },
+        "responses": {
+          "201": { "description": "Private artifact staged", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LinuxImportStaging" } } } },
+          "400": { "description": "Invalid or over-limit upload" }, "403": { "description": "Infrastructure or Linux import credential is required" }, "409": { "description": "Staging quota, incomplete replay or idempotency payload conflict" }, "501": { "description": "Linux import is disabled" }
+        }
+      }
+    },
+    "/v1/linux-imports": {
+      "post": {
+        "summary": "Create or replay a guarded Linux image import journal",
+        "security": [{ "bearerAuth": [], "linuxImportToken": [] }],
+        "parameters": [{ "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1 } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LinuxImportCreate" } } } },
+        "responses": { "200": { "description": "Idempotent replay", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LinuxImportCreated" } } } }, "201": { "description": "Run and reservations recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LinuxImportCreated" } } } }, "400": { "description": "Invalid signed image or metadata" }, "403": { "description": "Infrastructure or Linux import credential is required" }, "409": { "description": "Stage or VM reservation conflicts" }, "501": { "description": "Linux import is disabled" } }
+      }
+    },
+    "/v1/linux-imports/{id}": {
+      "get": {
+        "summary": "Read a guarded Linux import without private paths or receipts",
+        "security": [{ "bearerAuth": [], "linuxImportToken": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^limp_[a-f0-9]{32}$" } }],
+        "responses": { "200": { "description": "Safe import status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LinuxImportStatus" } } } }, "403": { "description": "Infrastructure or Linux import credential is required" }, "404": { "description": "Run not found" }, "501": { "description": "Linux import is disabled" } }
+      }
+    },
+    "/v1/linux-imports/{id}/advance": {
+      "post": {
+        "summary": "Dispatch one guarded Linux import phase or reconcile its receipt",
+        "security": [{ "bearerAuth": [], "linuxImportToken": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^limp_[a-f0-9]{32}$" } }],
+        "responses": { "200": { "description": "Current run state", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LinuxImportCreated" } } } }, "403": { "description": "Ownership or credential validation denied" }, "404": { "description": "Run not found" }, "501": { "description": "Linux import is disabled" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "qualificationToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Kiln-Qualification-Token",
+        "description": "Separate qualification credential, required together with the infrastructure bearer credential."
+      },
+      "linuxImportToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Kiln-Linux-Import-Token",
+        "description": "Separate Linux import operator credential, required together with the infrastructure bearer credential."
+      }
+    },
+    "schemas": {
+      "LinuxImportStaging": {
+        "type": "object",
+        "required": ["stagingId", "size", "sha256"],
+        "properties": {
+          "stagingId": { "type": "string", "pattern": "^lstg_[a-f0-9]{32}$" },
+          "size": { "type": "integer", "minimum": 1, "maximum": 2147483648 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        },
+        "additionalProperties": false
+      },
+      "LinuxImportCreate": {
+        "type": "object",
+        "required": ["stagingId", "manifest", "signature", "buildMetadataBase64"],
+        "properties": {
+          "stagingId": { "type": "string", "pattern": "^lstg_[a-f0-9]{32}$" },
+          "manifest": { "$ref": "#/components/schemas/LinuxImportManifest" },
+          "signature": { "type": "string", "minLength": 1, "maxLength": 2048 },
+          "buildMetadataBase64": { "type": "string", "minLength": 1, "maxLength": 1398104 }
+        },
+        "additionalProperties": false
+      },
+      "LinuxImportCreated": {
+        "type": "object",
+        "required": ["id", "status", "planDigest"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^limp_[a-f0-9]{32}$" },
+          "status": { "enum": ["ACTIVE", "COMPLETED", "UNKNOWN"] },
+          "planDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "replayed": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "LinuxImportManifest": {
+        "type": "object",
+        "required": ["schemaVersion", "name", "version", "arch", "artifactSha256", "artifactSize", "sourceBuild", "capabilities", "keyId"],
+        "properties": {
+          "schemaVersion": { "const": 1 },
+          "name": { "const": "kiln-dev-base" },
+          "version": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$" },
+          "arch": { "const": "amd64" },
+          "artifactSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "artifactSize": { "type": "integer", "minimum": 1, "maximum": 2147483648 },
+          "sourceBuild": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+          "capabilities": { "type": "array", "maxItems": 16, "items": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$" } },
+          "keyId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$" }
+        },
+        "additionalProperties": false
+      },
+      "LinuxImportPhaseStatus": {
+        "type": "object",
+        "required": ["name", "status", "safeReason", "createdAt", "reconciliationDeadline", "submittedAt", "completedAt"],
+        "properties": {
+          "name": { "enum": ["UPLOAD", "IMPORT", "TEMPLATE", "CLONE", "STAMP", "START", "STOP", "DESTROY_CLONE", "DESTROY_TEMPLATE"] },
+          "status": { "enum": ["INTENT", "SUBMITTED", "COMPLETED", "UNKNOWN"] },
+          "safeReason": { "type": ["string", "null"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "reconciliationDeadline": { "type": "string", "format": "date-time" },
+          "submittedAt": { "type": ["string", "null"], "format": "date-time" },
+          "completedAt": { "type": ["string", "null"], "format": "date-time" }
+        },
+        "additionalProperties": false
+      },
+      "LinuxImportStatus": {
+        "type": "object",
+        "required": ["id", "status", "createdAt", "completedAt", "planDigest", "stagingId", "templateResourceId", "cloneResourceId", "phases"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^limp_[a-f0-9]{32}$" },
+          "status": { "enum": ["ACTIVE", "COMPLETED", "UNKNOWN"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "completedAt": { "type": ["string", "null"], "format": "date-time" },
+          "planDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "stagingId": { "type": "string", "pattern": "^lstg_[a-f0-9]{32}$" },
+          "templateResourceId": { "type": "string" },
+          "cloneResourceId": { "type": "string" },
+          "phases": { "type": "array", "items": { "$ref": "#/components/schemas/LinuxImportPhaseStatus" } }
+        },
+        "additionalProperties": false
+      },
+      "ResourceOperation": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "createdAt",
+          "submittedAt",
+          "completedAt",
+          "safeReason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "create",
+              "start",
+              "stop",
+              "destroy"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "INTENT",
+              "SUBMITTED",
+              "COMPLETED",
+              "UNKNOWN"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submittedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "safeReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Fixed diagnostic code, never a raw provider message."
+          }
+        },
+        "additionalProperties": false
+      },
+      "Resource": {
+        "type": "object",
+        "required": [
+          "id",
+          "installationId",
+          "projectId",
+          "providerId",
+          "providerResourceId",
+          "providerKind",
+          "createdBy",
+          "pool",
+          "type",
+          "ownership",
+          "state",
+          "createdAt",
+          "expiresAt",
+          "node",
+          "profile"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "installationId": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "providerResourceId": {
+            "type": "string"
+          },
+          "providerKind": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "pool": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "development",
+              "execution",
+              "browser",
+              "gateway",
+              "network_probe",
+              "image_template"
+            ]
+          },
+          "ownership": {
+            "type": "string",
+            "enum": [
+              "KILN_MANAGED",
+              "IMPORTED",
+              "EXTERNAL"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "REQUESTED",
+              "PROVISIONING",
+              "READY",
+              "STOPPING",
+              "STOPPED",
+              "DESTROYING",
+              "DESTROYED",
+              "ERROR",
+              "LOST",
+              "QUARANTINED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "node": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "profile": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provenanceRequired": {
+            "type": "boolean",
+            "description": "When true, missing provenance denies lifecycle operations."
+          }
+        }
+      },
+      "NetworkProbeResult": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "durationMs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "DNS_ANSWER",
+              "DNS_EMPTY",
+              "DNS_ERROR",
+              "HTTPS_EXPECTED",
+              "HTTPS_UNEXPECTED",
+              "HTTPS_REDIRECT",
+              "HTTPS_ERROR",
+              "TCP_CONNECTED",
+              "TCP_FAILED",
+              "TIMEOUT"
+            ]
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30000
+          }
+        },
+        "additionalProperties": false
+      },
+      "NetworkProbePlan": {
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "probeId",
+          "installationId",
+          "gatewayId",
+          "gatewayGeneration",
+          "gatewayConfigFingerprint",
+          "profileId",
+          "profileDigest",
+          "expiresAt",
+          "checks"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "probeId": {
+            "type": "string"
+          },
+          "installationId": {
+            "type": "string"
+          },
+          "gatewayId": {
+            "type": "string"
+          },
+          "gatewayGeneration": {
+            "type": "string"
+          },
+          "gatewayConfigFingerprint": {
+            "type": "string"
+          },
+          "profileId": {
+            "type": "string"
+          },
+          "profileDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checks": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "NetworkProbeRecord": {
+        "type": "object",
+        "description": "A diagnostic-only record. placement is always UNVERIFIED in this release.",
+        "required": [
+          "resource",
+          "probe"
+        ],
+        "properties": {
+          "resource": {
+            "type": "object",
+            "required": [
+              "id",
+              "state",
+              "expiresAt",
+              "node"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "expiresAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "node": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "probe": {
+            "type": "object",
+            "required": [
+              "id",
+              "state",
+              "gatewayId",
+              "gatewayGeneration",
+              "gatewayConfigFingerprint",
+              "profileId",
+              "profileDigest",
+              "plan",
+              "planDigest",
+              "resultDigest",
+              "results",
+              "receivedAt",
+              "createdAt",
+              "placement"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "PENDING",
+                  "COMPLETED",
+                  "TIMED_OUT",
+                  "INVALIDATED",
+                  "CANCELLED"
+                ]
+              },
+              "gatewayId": {
+                "type": "string"
+              },
+              "gatewayGeneration": {
+                "type": "string"
+              },
+              "gatewayConfigFingerprint": {
+                "type": "string"
+              },
+              "profileId": {
+                "type": "string"
+              },
+              "profileDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "plan": {
+                "$ref": "#/components/schemas/NetworkProbePlan"
+              },
+              "planDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "resultDigest": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "results": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "$ref": "#/components/schemas/NetworkProbeResult"
+                }
+              },
+              "receivedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "placement": {
+                "const": "UNVERIFIED"
+              }
+            }
+          }
+        }
+      },
+      "GatewayRecord": {
+        "type": "object",
+        "required": [
+          "resource",
+          "metadata",
+          "health"
+        ],
+        "properties": {
+          "resource": {
+            "$ref": "#/components/schemas/Resource"
+          },
+          "metadata": {
+            "type": "object",
+            "required": [
+              "resourceId",
+              "node",
+              "generation",
+              "expectedFingerprint",
+              "createdAt"
+            ],
+            "properties": {
+              "resourceId": {
+                "type": "string"
+              },
+              "node": {
+                "type": "string"
+              },
+              "generation": {
+                "type": "string"
+              },
+              "expectedFingerprint": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "health": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GatewayHealth"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "GatewayHealth": {
+        "type": "object",
+        "required": [
+          "resourceId",
+          "node",
+          "status",
+          "observedAt",
+          "evidence",
+          "generation",
+          "expectedFingerprint"
+        ],
+        "properties": {
+          "resourceId": {
+            "type": "string"
+          },
+          "node": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "READY",
+              "NOT_READY",
+              "QUARANTINED",
+              "UNCONFIGURED"
+            ]
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "generation": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Identity binding of this observation; missing legacy bindings cannot authorize admission."
+          },
+          "expectedFingerprint": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Identity binding of this observation; missing legacy bindings cannot authorize admission."
+          }
+        }
+      },
+      "GatewayCheck": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "WARN",
+              "FAIL",
+              "UNKNOWN"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "GatewayIncident": {
+        "type": "object",
+        "required": [
+          "id",
+          "node",
+          "gatewayId",
+          "code",
+          "severity",
+          "status",
+          "firstSeenAt",
+          "lastSeenAt",
+          "resolvedAt",
+          "message",
+          "guidance"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "node": {
+            "type": "string"
+          },
+          "gatewayId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "warning",
+              "critical"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED"
+            ]
+          },
+          "firstSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string"
+          },
+          "guidance": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DoctorReport": {
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "checkedAt",
+          "installationId",
+          "providerMode",
+          "persistence",
+          "overall",
+          "checks",
+          "nodes",
+          "incidents",
+          "repairEnabled",
+          "limitations"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "installationId": {
+            "type": "string"
+          },
+          "providerMode": {
+            "type": "string",
+            "enum": [
+              "fake",
+              "proxmox-read-only"
+            ]
+          },
+          "persistence": {
+            "type": "string",
+            "enum": [
+              "memory",
+              "postgres"
+            ]
+          },
+          "overall": {
+            "type": "string",
+            "enum": [
+              "HEALTHY",
+              "DEGRADED",
+              "UNKNOWN"
+            ]
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GatewayCheck"
+            }
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "node",
+                "gatewayId",
+                "status",
+                "checks"
+              ],
+              "properties": {
+                "node": {
+                  "type": "string"
+                },
+                "gatewayId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "READY",
+                    "NOT_READY",
+                    "QUARANTINED",
+                    "UNCONFIGURED"
+                  ]
+                },
+                "checks": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GatewayCheck"
+                  }
+                }
+              }
+            }
+          },
+          "incidents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GatewayIncident"
+            }
+          },
+          "repairEnabled": {
+            "const": false
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ImageManifest": {
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "name",
+          "version",
+          "arch",
+          "artifactSha256",
+          "artifactSize",
+          "sourceBuild",
+          "capabilities",
+          "keyId"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          },
+          "arch": {
+            "enum": [
+              "amd64",
+              "arm64"
+            ]
+          },
+          "artifactSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "artifactSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 131072
+          },
+          "sourceBuild": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+            },
+            "maxItems": 16,
+            "uniqueItems": true
+          },
+          "keyId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImageImportRequest": {
+        "type": "object",
+        "required": [
+          "manifest",
+          "signature",
+          "artifactBase64"
+        ],
+        "properties": {
+          "manifest": {
+            "$ref": "#/components/schemas/ImageManifest"
+          },
+          "signature": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "artifactBase64": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 174764
+          },
+          "node": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "additionalProperties": false
+      },
+      "TemplateImportSummary": {
+        "type": "object",
+        "required": [
+          "templateId",
+          "imageManifestDigest",
+          "state"
+        ],
+        "properties": {
+          "templateId": {
+            "type": "string"
+          },
+          "imageManifestDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "state": {
+            "enum": [
+              "READY",
+              "UNKNOWN",
+              "QUARANTINED",
+              "RETIRED"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResourceProvenance": {
+        "type": "object",
+        "required": [
+          "templateId",
+          "imageManifestDigest",
+          "planDigest",
+          "cloneMode",
+          "attachmentClasses"
+        ],
+        "properties": {
+          "templateId": {
+            "type": "string"
+          },
+          "imageManifestDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "planDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "cloneMode": {
+            "const": "FULL"
+          },
+          "attachmentClasses": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "BOOT_VOLUME",
+                "DATA_VOLUME",
+                "CLOUD_INIT",
+                "EFI",
+                "TPM",
+                "UNUSED_VOLUME",
+                "NIC",
+                "FIREWALL",
+                "HA",
+                "STORAGE_REFERENCE",
+                "BRIDGE_REFERENCE",
+                "ISO_REFERENCE"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

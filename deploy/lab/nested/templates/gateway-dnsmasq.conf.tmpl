@@ -1,0 +1,16 @@
+interface=$LEASE_A_INTERFACE
+interface=$LEASE_B_INTERFACE
+bind-interfaces
+no-resolv
+$UPSTREAM_DNS
+domain-needed
+bogus-priv
+dhcp-authoritative
+dhcp-range=$LEASE_A_NETWORK,static,$LEASE_A_NETMASK,1h
+dhcp-option=tag:$LEASE_A_INTERFACE,option:router,$LEASE_A_ROUTER
+dhcp-option=tag:$LEASE_A_INTERFACE,option:dns-server,$LEASE_A_ROUTER
+dhcp-host=$LEASE_A_CLIENT_MAC,set:$LEASE_A_INTERFACE,$LEASE_A_CLIENT
+dhcp-range=$LEASE_B_NETWORK,static,$LEASE_B_NETMASK,1h
+dhcp-option=tag:$LEASE_B_INTERFACE,option:router,$LEASE_B_ROUTER
+dhcp-option=tag:$LEASE_B_INTERFACE,option:dns-server,$LEASE_B_ROUTER
+dhcp-host=$LEASE_B_CLIENT_MAC,set:$LEASE_B_INTERFACE,$LEASE_B_CLIENT

@@ -1,0 +1,19 @@
+{
+  "name": "@kiln/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "@kiln/api-schema": "*",
+    "@kiln/auth": "*",
+    "@kiln/core": "*",
+    "@kiln/database": "*",
+    "@kiln/providers": "*",
+    "@kiln/proxmox": "*",
+    "fastify": "^5.2.1"
+  }
+}

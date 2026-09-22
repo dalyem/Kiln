@@ -1,0 +1,51 @@
+name: kiln
+services:
+  postgres:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_USER: kiln
+      POSTGRES_DB: kiln
+      POSTGRES_PASSWORD: ${KILN_DB_PASSWORD:?Set KILN_DB_PASSWORD in .env}
+    volumes:
+      - kiln-postgres:/var/lib/postgresql/data
+      - ./packages/database/drizzle/0000_initial.sql:/docker-entrypoint-initdb.d/0000_initial.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U kiln -d kiln"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  api:
+    build: .
+    environment:
+      KILN_API_TOKEN: ${KILN_API_TOKEN:?Set KILN_API_TOKEN in .env}
+      KILN_INFRASTRUCTURE_TOKEN: ${KILN_INFRASTRUCTURE_TOKEN:-}
+      KILN_DATABASE_URL: postgres://kiln:${KILN_DB_PASSWORD:?Set KILN_DB_PASSWORD in .env}@postgres:5432/kiln
+      KILN_PROVIDER: fake
+      KILN_HOST: 0.0.0.0
+      KILN_PORT: 4000
+    ports:
+      - 127.0.0.1:4000:4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  dashboard:
+    build: .
+    command: [node, node_modules/next/dist/bin/next, dev, apps/dashboard, --hostname, 0.0.0.0]
+    environment:
+      KILN_URL: http://api:4000
+      KILN_TOKEN: ${KILN_API_TOKEN:?Set KILN_API_TOKEN in .env}
+      NEXT_TELEMETRY_DISABLED: '1'
+    ports:
+      - 127.0.0.1:3000:3000
+    depends_on:
+      api:
+        condition: service_healthy
+volumes:
+  kiln-postgres:

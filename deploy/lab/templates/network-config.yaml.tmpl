@@ -1,0 +1,21 @@
+version: 2
+ethernets:
+  wan0:
+    match:
+      macaddress: "$WAN_MAC"
+    set-name: wan0
+    dhcp4: true
+    dhcp4-overrides:
+      use-dns: false
+    dhcp6: false
+    link-local: []
+    nameservers:
+      addresses: [$UPSTREAM_DNS]
+  lan0:
+    match:
+      macaddress: "$LAN_MAC"
+    set-name: lan0
+    optional: true
+    dhcp4: false
+    dhcp6: false
+    link-local: []

@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+/usr/sbin/sysctl -w net.ipv4.ip_forward=0
+for interface in lease210 lease211; do
+  /usr/sbin/ip address flush dev "$$interface" 2>/dev/null || true
+  /usr/sbin/ip link set dev "$$interface" down 2>/dev/null || true
+  /usr/sbin/ip link delete dev "$$interface" 2>/dev/null || true
+done

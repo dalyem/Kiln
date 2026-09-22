@@ -1,0 +1,41 @@
+# Copy outside the repository and replace the public-key and password-hash paths.
+# This fixture creates no PVE objects and does not contain a private key.
+
+[router]
+vmid = 104
+hostname = "kiln-lab-router-01"
+instance_id = "kiln-lab-router-104"
+wan_bridge = "vmbr0"
+wan_vlan = 119
+wan_mac = "BC:24:11:10:04:00"
+lan_vnet = "klab103"
+lan_vlan = 103
+lan_mac = "BC:24:11:10:04:01"
+lan_ip = "10.250.103.1"
+lan_cidr = "10.250.103.0/24"
+orchestrator_ip = "10.63.119.100"
+upstream_dns = ["1.1.1.1", "9.9.9.9"]
+protected_ipv4_cidrs = [
+  "0.0.0.0/8", "10.0.0.0/8", "10.63.99.0/24", "10.63.100.0/24", "10.63.119.0/24", "100.64.0.0/10", "127.0.0.0/8",
+  "169.254.0.0/16", "172.16.0.0/12", "192.0.0.0/24", "192.0.2.0/24",
+  "192.168.0.0/16", "198.18.0.0/15", "198.51.100.0/24",
+  "203.0.113.0/24", "224.0.0.0/4", "240.0.0.0/4",
+]
+permit_open = ["10.250.103.10:22", "10.250.103.10:8006"]
+ssh_public_key_file = "/private/build/kiln-lab-root.pub"
+
+[pve]
+vmid = 103
+hostname = "kiln-lab-pve-01.test"
+ip = "10.250.103.10"
+prefix = 24
+gateway = "10.250.103.1"
+dns = "10.250.103.1"
+mac = "BC:24:11:0F:63:CC"
+disk = "sda"
+country = "us"
+keyboard = "en-us"
+timezone = "UTC"
+mailto = "admin@kiln.test"
+ssh_public_key_file = "/private/build/kiln-lab-root.pub"
+root_password_hash_file = "/private/build/pve-root-password.hash"

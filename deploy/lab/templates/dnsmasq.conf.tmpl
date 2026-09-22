@@ -1,0 +1,11 @@
+interface=lan0
+bind-interfaces
+listen-address=$LAN_IP
+no-resolv
+$UPSTREAM_DNS
+domain-needed
+bogus-priv
+dhcp-authoritative
+dhcp-range=$LAN_NETWORK,static,$LAN_NETMASK
+dhcp-option=option:router,$LAN_IP
+dhcp-option=option:dns-server,$LAN_IP

@@ -1,0 +1,20 @@
+[global]
+country = $COUNTRY
+fqdn = $HOSTNAME
+keyboard = $KEYBOARD
+mailto = $MAILTO
+root-password-hashed = $ROOT_PASSWORD_HASH
+root-ssh-keys = [$PVE_PUBLIC_KEY]
+timezone = $TIMEZONE
+reboot-mode = "power-off"
+
+[network]
+source = "from-answer"
+filter = { ID_NET_NAME_MAC = $PVE_NETWORK_FILTER }
+cidr = $PVE_CIDR
+gateway = $PVE_GATEWAY
+dns = $PVE_DNS
+
+[disk-setup]
+filesystem = "ext4"
+disk-list = [$PVE_DISK]

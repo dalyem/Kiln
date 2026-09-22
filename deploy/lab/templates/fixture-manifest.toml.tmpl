@@ -1,0 +1,27 @@
+# This file contains placement values only. It deliberately omits key and password-hash data.
+[router]
+vmid = $router_vmid
+hostname = "$router_hostname"
+instance_id = "$router_instance_id"
+wan_bridge = "$wan_bridge"
+wan_vlan = $wan_vlan
+wan_mac = "$wan_mac"
+lan_vnet = "$lan_vnet"
+lan_vlan = $lan_vlan
+lan_mac = "$lan_mac"
+lan_ip = "$lan_ip"
+lan_cidr = "$lan_cidr"
+orchestrator_ip = "$orchestrator_ip"
+upstream_dns = $UPSTREAM_DNS
+protected_ipv4_cidrs = $PROTECTED_IPV4_CIDRS
+permit_open = $PERMIT_OPEN
+
+[pve]
+vmid = $pve_vmid
+hostname = "$pve_hostname"
+ip = "$pve_ip"
+prefix = $pve_prefix
+gateway = "$pve_gateway"
+dns = "$pve_dns"
+mac = "$pve_mac"
+disk = "$pve_disk"

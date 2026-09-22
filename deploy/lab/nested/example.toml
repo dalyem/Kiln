@@ -1,0 +1,24 @@
+# Copy this file outside the repository. The renderer reads only this public key.
+
+[gateway]
+vmid = 100
+hostname = "kiln-nested-gateway-01"
+instance_id = "kiln-nested-gateway-100"
+wan_mac = "BC:24:11:20:00:00"
+trunk_mac = "BC:24:11:20:00:01"
+ssh_public_key_file = "/private/kiln-lab/lab_ed25519.pub"
+
+[probe_a]
+vmid = 101
+hostname = "kiln-nested-probe-a"
+instance_id = "kiln-nested-probe-a-101"
+mac = "BC:24:11:20:01:00"
+
+[probe_b]
+vmid = 102
+hostname = "kiln-nested-probe-b"
+instance_id = "kiln-nested-probe-b-102"
+mac = "BC:24:11:20:02:00"
+
+[probes]
+enable_http_test = true
