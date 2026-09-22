@@ -988,6 +988,39 @@ export class MemoryStore implements Store {
     }
   }
 }
+function linuxImportDefersRecovery(
+  resource: typeof resources.$inferSelect,
+  runs: Array<{ installationId: string; plan: LinuxImportRun["plan"] }>,
+): boolean {
+  if (
+    resource.createdBy !== "linux-image-import" ||
+    resource.profile !== "proxmox-linux-image-import" ||
+    resource.providerId !== "proxmox" ||
+    resource.providerKind !== "qemu" ||
+    resource.provenanceRequired !== 1 ||
+    resource.ownership !== "KILN_MANAGED" ||
+    resource.projectId !== "infrastructure" ||
+    resource.expiresAt !== null
+  )
+    return false;
+  return runs.some((run) => {
+    if (
+      run.installationId !== resource.installationId ||
+      run.plan.installationId !== resource.installationId
+    )
+      return false;
+    const template = resource.id === run.plan.templateResourceId;
+    const clone = resource.id === run.plan.cloneResourceId;
+    if (template === clone) return false;
+    return (
+      resource.type === (template ? "image_template" : "execution") &&
+      resource.providerResourceId ===
+        (template ? run.plan.templateVmid : run.plan.cloneVmid) &&
+      resource.node === run.plan.node &&
+      resource.pool === run.plan.pool
+    );
+  });
+}
 export class DrizzleStore implements Store {
   private readonly db: NodePgDatabase;
   private readonly pool: Pool;
@@ -1811,6 +1844,21 @@ export class DrizzleStore implements Store {
   async migrate(sql: string): Promise<void> {
     await this.pool.query(sql);
   }
+  private async activeLinuxImportPlans(): Promise<
+    Array<{ installationId: string; plan: LinuxImportRun["plan"] }>
+  > {
+    const relation = await this.pool.query<{ rel: string | null }>(
+      "SELECT to_regclass('public.linux_import_runs') AS rel",
+    );
+    if (!relation.rows[0]?.rel) return [];
+    return this.db
+      .select({
+        installationId: linuxImportRuns.installationId,
+        plan: linuxImportRuns.plan,
+      })
+      .from(linuxImportRuns)
+      .where(eq(linuxImportRuns.status, "ACTIVE"));
+  }
   async recoverUnfinishedOperations(): Promise<void> {
     const pending = await this.db
       .select()
@@ -1844,11 +1892,13 @@ export class DrizzleStore implements Store {
       .select()
       .from(resources)
       .where(eq(resources.state, "PROVISIONING"));
+    const activeLinuxImports = await this.activeLinuxImportPlans();
     for (const resource of provisioning) {
       if (resource.createdBy === "qualification" && resource.providerId === "proxmox" && resource.provenanceRequired === 1) {
         const run = (await this.db.select().from(qualificationRuns).where(eq(qualificationRuns.installationId, resource.installationId)).limit(1))[0];
         if (run && [run.plan.templateResourceId, run.plan.probeResourceId].includes(resource.id)) continue;
       }
+      if (linuxImportDefersRecovery(resource, activeLinuxImports)) continue;
       const createOperation = await this.db
         .select()
         .from(operations)
