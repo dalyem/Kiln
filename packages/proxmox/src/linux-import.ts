@@ -626,7 +626,7 @@ export class ProxmoxLinuxImportProvider implements LinuxImportProvider {
       !Array.isArray(cluster) ||
       !Array.isArray(local) ||
       !this.vmInventory(cluster, ["qemu", "lxc"]) ||
-      !this.vmInventory(local, ["qemu"])
+      !this.nodeQemuInventory(local)
     )
       throw this.denied("Proxmox Linux import evidence is incomplete");
     const stage = storage.find(
@@ -828,7 +828,7 @@ export class ProxmoxLinuxImportProvider implements LinuxImportProvider {
       !Array.isArray(local) ||
       !Array.isArray(content) ||
       !this.vmInventory(cluster, ["qemu", "lxc"]) ||
-      !this.vmInventory(local, ["qemu"]) ||
+      !this.nodeQemuInventory(local) ||
       !this.volumeInventory(content) ||
       cluster.some((x) => isRecord(x) && String(x.vmid) === vmid) ||
       local.some((x) => isRecord(x) && String(x.vmid) === vmid) ||
@@ -1203,8 +1203,21 @@ export class ProxmoxLinuxImportProvider implements LinuxImportProvider {
         isRecord(item) &&
         typeof item.type === "string" &&
         types.includes(item.type) &&
-        (typeof item.vmid === "string" || typeof item.vmid === "number") &&
-        VMID.test(String(item.vmid)),
+        this.validVmid(item.vmid),
+    );
+  }
+  private nodeQemuInventory(value: unknown[]): boolean {
+    return value.every(
+      (item) =>
+        isRecord(item) &&
+        this.validVmid(item.vmid) &&
+        (item.type === undefined || item.type === "qemu"),
+    );
+  }
+  private validVmid(value: unknown): boolean {
+    return (
+      (typeof value === "string" || typeof value === "number") &&
+      VMID.test(String(value))
     );
   }
   private volumeInventory(value: unknown[]): boolean {
