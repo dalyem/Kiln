@@ -1298,6 +1298,7 @@ export class ProxmoxLinuxImportProvider implements LinuxImportProvider {
                               ? plan.cloneVmid
                               : plan.templateVmid,
                           ),
+                          pool,
                         ],
                         ["VM.Allocate"],
                       ],
