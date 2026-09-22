@@ -25,8 +25,13 @@ the actual binary round trip, rejection tests and remaining limits.
 The [Linux image increment](development/linux-image-qualification.md) adds a
 pinned Debian builder, signed build metadata, bounded file verification and a
 local no-NIC boot qualifier that exercises the shipped `kilnd` materializer.
-Kiln now has a guarded Proxmox import path. Real PVE import qualification is
-KILN-26 work, and workload enrollment remains unimplemented.
+Kiln now has a guarded Proxmox import path. The node QEMU list may omit
+`type`; that shape is accepted only on the node-scoped list. Startup recovery
+leaves the two resources of an active Linux import run in `PROVISIONING` and
+still marks every other orphaned resource `ERROR`. The KILN-26 nested run on
+2026-09-22 completed import, boot, restart recovery, and cleanup. See
+[Linux PVE qualification](development/linux-pve-qualification.md). Workload
+enrollment remains unimplemented.
 
 - TypeScript Core and Fastify REST, shared request schemas, ownership checks and a fake compute provider.
 - PostgreSQL/Drizzle schema and stores, explicit ephemeral memory mode, installation identity and operation/event records.

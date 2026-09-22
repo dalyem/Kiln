@@ -376,19 +376,35 @@ function fixture(
     const entries = [
       state.template !== "absent" ? member(plan.templateVmid) : null,
       state.clone !== "absent" ? member(plan.cloneVmid) : null,
-    ].filter(Boolean);
+    ].filter((entry) => entry !== null);
+    const residents = [100, 101, 102].map((vmid) => member(String(vmid)));
+    const clusterRows =
+      state.overlay === "cluster inventory omits type"
+        ? [...residents, ...entries].map(({ type: _type, ...rest }) => rest)
+        : [...residents, ...entries];
+    const nodeRows: Array<Record<string, unknown>> = [
+      { vmid: 100, node: plan.node },
+      { type: "qemu", vmid: 101, node: plan.node },
+      { vmid: 102, node: plan.node },
+      ...entries.map(({ vmid, node }) => ({ vmid, node })),
+    ];
     if (path === "/api2/json/cluster/resources?type=vm")
       return envelope(
         state.overlay === "malformed cluster inventory"
-          ? [...entries, {}]
-          : entries,
+          ? [...clusterRows, {}]
+          : clusterRows,
       );
-    if (path === "/api2/json/nodes/pve1/qemu")
-      return envelope(
-        state.overlay === "malformed node inventory"
-          ? [...entries, {}]
-          : entries,
-      );
+    if (path === "/api2/json/nodes/pve1/qemu") {
+      const rows = [...nodeRows];
+      if (state.overlay === "malformed node inventory") rows.push({});
+      if (state.overlay === "node inventory non-qemu type")
+        rows.push({ type: "lxc", vmid: 103, node: plan.node });
+      if (state.overlay === "node inventory invalid vmid")
+        rows.push({ vmid: "abc", node: plan.node });
+      if (state.overlay === "node inventory null type")
+        rows.push({ type: null, vmid: 103, node: plan.node });
+      return envelope(rows);
+    }
     if (path === "/api2/json/pools/kiln")
       return envelope({
         poolid: plan.pool,
@@ -626,6 +642,23 @@ describe("Proxmox Linux image import provider", () => {
   it("denies a missing phase grant before it sends an upload", async () => {
     await withImage(async (plan, mock) => {
       mock.state.overlay = "missing permission";
+      await expect(
+        provider(mock.fetcher).executeLinuxImportPhase(
+          context(plan, "UPLOAD", {}),
+        ),
+      ).rejects.toMatchObject({ code: "SAFETY_DENIED" });
+      expect(mock.calls.filter((call) => call.method !== "GET")).toEqual([]);
+    });
+  });
+  it.each([
+    "node inventory non-qemu type",
+    "node inventory invalid vmid",
+    "node inventory null type",
+    "malformed node inventory",
+    "cluster inventory omits type",
+  ])("rejects %s before it dispatches an upload", async (overlay) => {
+    await withImage(async (plan, mock) => {
+      mock.state.overlay = overlay;
       await expect(
         provider(mock.fetcher).executeLinuxImportPhase(
           context(plan, "UPLOAD", {}),

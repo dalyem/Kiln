@@ -76,4 +76,5 @@ still matched after final verification.
 
 KILN-85 qualifies the contributor Compose stack separately. Real PVE import,
 guest boot, networking, workspace transport and preview routing are not claimed
-here; the live Linux lifecycle remains KILN-26.
+here. The KILN-26 nested run completed import, boot, restart recovery, and cleanup;
+see [Linux PVE qualification](linux-pve-qualification.md).
