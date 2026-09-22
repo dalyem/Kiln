@@ -25,10 +25,11 @@ the actual binary round trip, rejection tests and remaining limits.
 The [Linux image increment](development/linux-image-qualification.md) adds a
 pinned Debian builder, signed build metadata, bounded file verification and a
 local no-NIC boot qualifier that exercises the shipped `kilnd` materializer.
-Kiln now has a guarded Proxmox import path. The KILN-26 live attempt on
-2026-09-22 stopped before a Proxmox write: the node QEMU list has no `type`
-field, and the import guard rejected it as incomplete evidence. Import, boot,
-restart recovery, and cleanup remain unqualified. See
+Kiln now has a guarded Proxmox import path. The node QEMU list may omit
+`type`; that shape is accepted only on the node-scoped list. The KILN-26 retry
+on 2026-09-22 uploaded one image, then restart recovery marked the run unknown:
+startup operation recovery sets Linux import resources to `ERROR` before import
+recovery can use its saved receipt. Boot and cleanup remain unqualified. See
 [Linux PVE qualification](development/linux-pve-qualification.md). Workload
 enrollment remains unimplemented.
 

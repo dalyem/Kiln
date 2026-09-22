@@ -76,5 +76,5 @@ still matched after final verification.
 
 KILN-85 qualifies the contributor Compose stack separately. Real PVE import,
 guest boot, networking, workspace transport and preview routing are not claimed
-here. The KILN-26 live attempt stopped before a Proxmox write; see
+here. The KILN-26 retry uploaded one image and stopped during restart recovery; see
 [Linux PVE qualification](linux-pve-qualification.md).

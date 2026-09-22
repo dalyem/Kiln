@@ -60,3 +60,43 @@ database dump are under
 
 Guest boot, saved-receipt recovery, cleanup, and `KILN_DEV_BASE_READY` were
 not reached.
+
+## Second attempt
+
+The node QEMU parser now accepts a missing `type` only for
+`GET /nodes/{node}/qemu`. A present type must still be `qemu`, and the mixed
+cluster list still requires an explicit `qemu` or `lxc` type. The provider
+suite includes the live typeless rows for guests 100, 101 and 102, and it
+rejects a non-QEMU type, a null type, an invalid VMID, a malformed node row,
+and a cluster list that omits `type`. With a disposable database, `npm test --
+--maxWorkers=2` passed 291 tests in 30 files, and `npm run build` passed.
+
+The Stage 2 dump was restored into a new database. All 23 historical table
+checksums matched before and after API migration. VMIDs 9102 and 9103 were
+absent on the nested host and unreserved in that database. All 25 external
+configuration hashes matched the first attempt. The first unknown database and
+its staging directory were left in place.
+
+Staging and run creation succeeded for `limp_f69cb1921c904cf8a00eacc5ca734111`.
+The reused staging idempotency key produced the same staging ID as the first
+attempt, `lstg_1588eaa0087e83d3e5e54318ef7702a0`, and this time the `imgcopy`
+task finished with exit OK. The saved receipt stayed `SUBMITTED`. Stopping and
+starting the API did not submit a second task. Startup operation recovery set
+both Linux import resources to `ERROR` (`resource.provisioning_recovered`,
+`MISSING_CREATE_OPERATION`) because they were `PROVISIONING` without a generic
+create operation. Linux import recovery then rejected that proof and marked
+`UPLOAD` `UNKNOWN` with `RECOVERY_SAFETY_PROOF_FAILED`. The journal was not
+edited.
+
+The uploaded file remains at
+`local:import/lstg_1588eaa0087e83d3e5e54318ef7702a0.qcow2` (1,686,634,496
+bytes), beside the retained BIOS image. No VM or target disk was created.
+Disk identities for 9102 and 9103 stay reserved by this unknown run. All 25
+hashes still matched afterward. The temporary token was removed and then
+rejected with HTTP 401. Private logs and the database dump are under
+`/home/daly/.local/state/kiln/kiln26-retry-44ceb4`.
+
+Guest boot, cleanup, and `KILN_DEV_BASE_READY` were not reached. A later
+attempt has to restore Stage 2 again. It cannot continue this journal, and it
+has to account for the uploaded file that now uses the first attempt's staging
+ID.
